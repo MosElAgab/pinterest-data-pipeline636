@@ -7,7 +7,7 @@
     - [Project Aim](#project-aim)
     - [What I learned](#what-i-learned)
 1. [Installation Instruction](#installation-instruction)
-    - [Configuration files](#configuration-files)
+    - [Prerequisites](#prerequisites)
     - [Virtual Environment](#virtual-environment-venv)
     - [Database](#database)
 1. [Usage Instruction](#usage-instruction)
@@ -67,3 +67,17 @@ The journey of developing and implementing this project has enriched my practica
 
 - **AWS Kinesis Data Streams:** Acquiring skills in real-time data streaming and management using AWS Kinesis has added a dynamic dimension to my toolkit, broadening my capabilities in handling data in motion.
 
+## Installation Instruction
+
+### Prerequisites
+Ensure that the following prerequisites are met before proceeding with the Pinterest Data Pipeline project:
+
+- Python 3+
+- Required Python Packages: SQLAlchemy, PyMySQL
+- Proficiency in Linux OS and familiarity with AWS services
+
+To begin, clone the repository to your local machine using the following command:
+
+```bash
+git clone https://github.com/MosElAgab/pinterest-data-pipeline636.git
+```
