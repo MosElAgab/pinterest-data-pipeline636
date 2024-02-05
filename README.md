@@ -9,15 +9,10 @@
 1. [Installation Instruction](#installation-instruction)
     - [Prerequisites](#prerequisites)
     - [AWS Resources Setup (IAM, VPC & EC2)](#aws-resources-setup-iam-vpc--ec2)
-    - [Database](#database)
-1. [Usage Instruction](#usage-instruction)
-    - [ETL process](#etl-process)
-    - [Building a star schema](#building-a-star-schema)
-    - [Query the data](#query-the-data)
-    - [Run the code](#run-the-code)
-    - [Testing](#testing)
-1. [File Structure](#file-structure)
-1. [License](#license)
+    - [MSK Cluster Configuration](#msk-cluster-configuration)
+    - [Kafka Setup on Client Machine (EC2)](#kafka-setup-on-client-machine-ec2)
+    - [S3](#s3)
+
 
 
 ## Project Description
@@ -139,4 +134,85 @@ Note: These steps are crucial as they enable IAM authentication to the MSK clust
 - Ensure the EC2 key-pair is acquired and use it to launch an instance on your local machine using an SSH client while being in the directory with the key-pair `.pem` file.
 
 > Make a note of the EC2 instance Public IPv4 DNS, denoted as `<EC2-Public-DNS>`.
+
+### MSK Cluster Configuration
+
+- Create an MSK Cluster on the AWS console called `pinterest-msk-cluster`. This service is used to build and run applications that leverage Apache Kafka for data processing.
+- Apache Kafka Version 2.8.1 was utilized, with a total of 3 brokers and 1 broker per zone.
+
+> Take note of the **Bootstrap servers string** and **Plaintext Apache Zookeeper connection** after creating the cluster.
+
+**Optional:** Obtain this information by running the following commands after replacing the `ClusterArn` with the information found in the MSK Cluster console.
+
+```bash
+aws kafka describe-cluster --cluster-arn ClusterArn
+aws kafka get-bootstrap-brokers --cluster-arn ClusterArn
+```
+
+### Kafka Setup on Client Machine (EC2)
+**Step 1: Install Java and download Kafka**
+
+```bash
+sudo yum install java-1.8.0
+```
+
+```bash
+wget https://archive.apache.org/dist/kafka/2.8.1/kafka_2.12-2.8.1.tgz
+tar -xzf kafka_2.12-2.8.1.tgz
+```
+
+**Step 2: Install the IAM MSK authentication package**
+
+```bash
+wget https://github.com/aws/aws-msk-iam-auth/releases/download/v1.1.5/aws-msk-iam-auth-1.1.5-all.jar
+```
+
+**Step 3: Configure environment variable in `bash.rc`**
+
+Add the following line in the `bash.rc` file and apply the changes to the current session by running: `source ~/.bashrc`
+
+```bash
+export CLASSPATH=/home/ec2-user/kafka_2.12-2.8.1/libs/aws-msk-iam-auth-1.1.5-all.jar
+```
+
+**Step 4: Configure Kafka client to use AWS IAM**
+
+Navigate to `kafka_2.12-2.8.1/bin` and create a `client.properties` file with the following information:
+
+```bash
+# Sets up TLS for encryption and SASL for authN.
+security.protocol = SASL_SSL
+
+# Identifies the SASL mechanism to use.
+sasl.mechanism = AWS_MSK_IAM
+
+# Binds SASL client implementation.
+sasl.jaas.config = software.amazon.msk.auth.iam.IAMLoginModule required awsRoleArn="<awsEC2RoleARN>";
+
+# Encapsulates constructing a SigV4 signature based on extracted credentials.
+# The SASL client bound by "sasl.jaas.config" invokes this class.
+sasl.client.callback.handler.class = software.amazon.msk.auth.iam.IAMClientCallbackHandler
+```
+> Replace `<awsEC2RoleARN>` with the appropriate string saved previously.
+
+**Step 5: Kafka Topics Creation**
+
+Create 3 topics where each will receive specific data:
+
+- `<UserID>.pin` for Pinterest posts data
+- `<UserID>.geo` for post geolocation data
+- `<UserID>.user` for post user data
+
+Navigate to `kafka_2.12-2.8.1/bin` and run the following command:
+
+```bash
+./kafka-topics.sh --bootstrap-server <BootstrapServerString> --command-config client.properties --create --topic <topic_name>
+```
+> Replace **BootstrapServerString** with the connection string previously saved and `<topic_name>` with the specified name.
+
+**Optional:** Run the following command to have a Kafka Consumer to check incoming messages:
+
+```bash
+./kafka-console-consumer.sh --bootstrap-server <BootstrapServerString> --consumer.config client.properties --group students --topic <topic_name> --from-beginning
+```
 
