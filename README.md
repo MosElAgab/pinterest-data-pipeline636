@@ -8,7 +8,7 @@
     - [What I learned](#what-i-learned)
 1. [Installation Instruction](#installation-instruction)
     - [Prerequisites](#prerequisites)
-    - [Virtual Environment](#virtual-environment-venv)
+    - [AWS Resources Setup (IAM, VPC & EC2)](#aws-resources-setup-iam-vpc--ec2)
     - [Database](#database)
 1. [Usage Instruction](#usage-instruction)
     - [ETL process](#etl-process)
@@ -81,3 +81,62 @@ To begin, clone the repository to your local machine using the following command
 ```bash
 git clone https://github.com/MosElAgab/pinterest-data-pipeline636.git
 ```
+
+### AWS Resources Setup (IAM, VPC & EC2)
+This step initialises the setup for your local environment and sets the stage for further configuration and execution of the data pipeline.
+
+Setting up the AWS environment constitutes a fundamental step in deploying the data pipeline. In this project, the region has been designated as `us-east-1`. Follow these meticulous steps to ensure a secure and fully functional setup.
+
+**Step 1: Identity and Access Management (IAM)**
+
+- Create an IAM user adhering to the Principle of Least Privilege.
+
+> Note: The IAM user's username will be denoted as `<UserID>` in line with common naming conventions observed in software development lifecycles.
+
+- Establish an IAM Role named `<UserID>-ec2-access-role`.
+    - Attach policies granting access to services such as VPC, EC2, S3, and MSK.
+    - Make a careful note of this role's ARN, which will be represented as `<awsEC2RoleARN>`.
+
+For enhanced security and streamlined resource management in AWS, it is strongly recommended to employ the IAM user created for this project instead of the root user for all subsequent operations. This practice aligns with the principle of least privilege, facilitates precise auditing, and significantly mitigates the risk of unauthorized access or inadvertent disruptions to the system.
+
+**Step 2: VPC Setup**
+
+- Generate a VPC and outline the subnets and security group for effective traffic control.
+
+**Step 3: EC2 Instance Initialization**
+
+- Craft an EC2 instance within the previously defined subnet and securely store the `.pem` file locally after creation. This file can also be retrieved from the AWS Console.
+
+**Step 4: Configure EC2 Client for AWS IAM MSK Cluster Authentication**
+
+- Navigate to the IAM console and, under “Roles,” select the recently created role.
+- Within the **Trust Relationships** section in the `<UserID>-ec2-access-role` Role on AWS Console, click on **Edit trust policy**.
+- Add a principal by selecting **IAM roles** as the Principal type and inserting `<awsEC2RoleARN>` when prompted.
+- Ensure the trust policy mirrors the configuration shown below:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": [
+            "ec2.amazonaws.com",
+            "kafkaconnect.amazonaws.com"
+        ],
+        "AWS": "<awsEC2RoleARN>"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+Note: These steps are crucial as they enable IAM authentication to the MSK cluster, ensuring a robust and secure authentication mechanism for seamless integration with AWS resources.
+
+**Step 5: Launch EC2 Instance using SSH client**
+
+- Ensure the EC2 key-pair is acquired and use it to launch an instance on your local machine using an SSH client while being in the directory with the key-pair `.pem` file.
+
+> Make a note of the EC2 instance Public IPv4 DNS, denoted as `<EC2-Public-DNS>`.
+
